@@ -1,0 +1,13 @@
+numpy
+pandas
+scikit-learn
+xgboost==1.6.2
+joblib
+textblob
+matplotlib
+seaborn
+pyspark
+
+# For Apple Silicon only
+tensorflow-macos==2.12.0
+tensorflow-metal==0.8.0

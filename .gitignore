@@ -104,3 +104,28 @@ venv.bak/
 # Others
 *.pyc
 *.pyo
+
+# Data
+data/full_data/
+data/*.csv
+
+# Model + output
+model/
+output/
+
+# System & Python
+.DS_Store
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.bin
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.venv/
+env/
+*.egg-info/
+

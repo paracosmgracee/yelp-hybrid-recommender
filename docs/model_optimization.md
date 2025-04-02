@@ -1,79 +1,99 @@
 # Model Optimization Overview for Yelp Hybrid Recommendation System
 
-This document summarizes the evolution and technical enhancements made to the Yelp Hybrid Recommender System from the initial baseline to the final competition version.
+This document outlines the evolution and optimization of the **Yelp Hybrid Recommender System**, integrating content-based features, clustering, deep learning, and gradient boosting to generate robust predictions. The system is modular, efficient, and designed to run on Apple Silicon (M-series) machines.
 
 ---
 
 ## ✨ Overview
 
-The system leverages enhanced feature engineering and machine learning (XGBoost) to predict user ratings for businesses. It combines collaborative filtering, content-based features, and post-processing to achieve improved accuracy and robustness.
+The hybrid system combines feature engineering with XGBoost and Deep Learning, plus post-processing enhancements. Collaborative filtering was considered but ultimately replaced by feature-driven hybridization.
 
 ---
 
-## 🏠 1. Overall Architecture
+## 🏗️ Architecture Evolution
 
-**Baseline:**
-- Simple hybrid recommender (XGBoost + CF), fixed weight combination
-- No prediction post-processing
-
-**Final Version:**
-- Modular architecture combining ML model, collaborative filtering, and post-processing
-- Includes smoothing, extreme value limitation, and prediction range clipping
+| Stage           | Description |
+|----------------|-------------|
+| Baseline       | Simple content-based model using XGBoost, minimal features |
+| Improved       | Added DL model and weighted hybrid predictions |
+| Final          | Modular pipeline with scalable preprocessing, feature enrichment, model ensemble, and smoothing post-processing |
 
 ---
 
-## 🔄 2. Data Processing & Feature Engineering
+## 🔄 Data Processing & Feature Engineering
 
-### ✏️ User Features
-- **Baseline:** `average_stars`, `review_count`
-- **Final:** Added `fans`, `useful`, `funny`, `cool`, `rating_deviation`, `activity_rate`
+### 👤 User Features
+- **Initial**: `average_stars`, `review_count`
+- **Enhanced**: Added `fans`, `useful`, `funny`, `cool`, rating deviation, and activity rate
 
-### 🏢 Business Features
-- **Baseline:** `stars`, `review_count`
-- **Final:** Added one-hot encoding for top 20 `categories`, `price_range`, `is_open`, and interaction terms (e.g., `stars * price_range`)
+### 🏪 Business Features
+- **Initial**: `stars`, `review_count`
+- **Enhanced**: Added `price_range`, `is_open`, and one-hot encoding of top 20 categories
+- **Interaction Terms**: e.g., `stars × price_range`, `stars × log(review_count)`
 
-### 📅 Review Features
-- **Baseline:** `useful`, `funny`
-- **Final:** Added `text_length`, `cool`, aggregated stats for each user-business pair
+### 📝 Review Features
+- **Initial**: `useful`, `funny`
+- **Enhanced**: Added `text_length`, `cool`, and grouped aggregation features per user-business
 
-### ✨ Feature Enhancements
-- One-hot encoding for categories
-- Log-transformations for skewed features
-- K-Means clustering for users and businesses
-- Feature interaction terms (e.g., diff between user’s avg star and business star)
-
----
-
-## 🧬 3. Model Enhancements (XGBoost)
-
-### ⚖️ Algorithm
-- Still using XGBoost, but with better features and tuned hyperparameters
-
-### ⚙️ Feature Scaling
-- Applied `StandardScaler` for all numerical features
-
-### ⚖️ Hyperparameter Optimization
-- Changed learning rate: 0.1 → **0.03**
-- Added regularization: `reg_alpha=0.15`, `reg_lambda=1.2`
+### 📊 Clustering Features
+- KMeans applied to both users and businesses using selected vectors
+- Added cluster indices as categorical input
 
 ---
 
-## ✅ 4. Post-Processing
+## 🔬 Model Engineering
 
-### 🧼 Smoothed Weighted Output
-- Combined XGBoost output with user and business average ratings (15% each)
+### 1. XGBoost Regressor
+- Objective: `reg:squarederror`
+- Parameters:
+  - `n_estimators=200`
+  - `max_depth=6`
+  - `learning_rate=0.05`
+  - `reg_alpha=0.1`, `reg_lambda=1.0`
+- Scaled input with `StandardScaler`
 
-### ❌ Extreme Value Smoothing
-- Values <2.0 and >4.0 were slightly smoothed to reduce RMSE impact
-
-### 🌍 Range Clipping
-- Ensured all predictions were within `[1, 5]`
+### 2. Deep Learning Model (Keras)
+- Architecture: [128 → 64 → 32 → 1], ReLU activations with dropout
+- Loss: `mean_squared_error`
+- Optimizer: `adam`
+- Early stopping enabled
 
 ---
 
-## ⚡ 5. Final Evaluation
+## 🔁 Hybrid Prediction Strategy
 
-### 📊 Error Distribution
+During prediction:
+- Both **XGBoost** and **Deep Learning** models generate predictions
+- Final output is the weighted average of both:
+  
+  ```
+  final_pred = 0.6 * xgb_pred + 0.4 * dl_pred
+  ```
+- Prediction smoothing rules:
+  - Add weighted average of user & business historical ratings (if available)
+  - Clip results to [1, 5]
+
+---
+
+## 🧼 Post-Processing Enhancements
+
+| Strategy | Description |
+|----------|-------------|
+| Weighted smoothing | Combine model output with user/business average |
+| Extreme value control | Soften overly high/low predictions |
+| Final clipping | Ensure output remains in rating range [1, 5] |
+
+---
+
+## ✅ Evaluation Summary
+
+| Metric | Value |
+|--------|-------|
+| **RMSE** | ~0.95 |
+| **MAE**  | ~0.80 |
+| Execution Time | ~550 seconds (on M3 Pro) |
+
+### 🔍 Error Distribution
 ```
 >=0 and <1:    103869
 >=1 and <2:     32062
@@ -82,20 +102,25 @@ The system leverages enhanced feature engineering and machine learning (XGBoost)
 >=4:               0
 ```
 
-### 📈 Final Results
-- **RMSE:** 0.9514
-- **Execution Time:** 549.32 seconds
+---
+
+## 📈 Summary Table
+
+| Component        | Status |
+|------------------|--------|
+| Feature Engineering | ✅ Enhanced with logs, clustering, interactions |
+| ML Models            | ✅ XGBoost + Deep Learning ensemble |
+| Pipeline             | ✅ Modular and reproducible |
+| Evaluation           | ✅ RMSE and error distribution tracking |
 
 ---
 
-## 🎯 Summary of Key Optimization Points
+## 🧠 Key Takeaways
 
-| Category | Improvement |
-|---------|-------------|
-| Feature Engineering | Added clustering, one-hot category encoding, activity metrics |
-| ML Model | Tuned hyperparameters, added regularization, applied scaling |
-| Post-Processing | Smoothing, range limiting, weighted blending |
+- A hybrid model (XGBoost + DL) with proper feature engineering can outperform standalone models
+- Clustering and interactions boost personalization
+- Post-processing plays a critical role in final prediction refinement
 
 ---
 
-This document serves as a technical log and reference for the incremental improvements made during the model development lifecycle.
+This document acts as a historical log and technical blueprint for improving rating prediction performance on the Yelp dataset.
